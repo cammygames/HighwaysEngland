@@ -4,6 +4,7 @@ using Rage;
 using Rage.Native;
 using LSPD_First_Response.Mod.API;
 using LSPD_First_Response.Mod.Callouts;
+using LSPD_First_Response.Engine.Scripting.Entities;
 
 namespace HighwaysEngland.Callouts
 {
@@ -52,18 +53,15 @@ namespace HighwaysEngland.Callouts
             vehicle1.Health = 40;
             if (vehicle1.Doors[4].IsValid()) vehicle1.Doors[4].Open(false);
 
+
             vehicle2 = new Vehicle(vehicles[veh2], vehicle1.GetOffsetPositionFront(5f), vehicle1.Heading);
             setUpVeh(vehicle2, 200f, 100f, true, false);
 
             driver1 = vehicle1.CreateRandomDriver();
-            driver1.Tasks.LeaveVehicle(LeaveVehicleFlags.LeaveDoorOpen).WaitForCompletion(6000);
-            driver1.IsPersistent = true;
-            driver1.BlockPermanentEvents = true;
+            setupPed(driver1, vehicle1);
 
             driver2 = vehicle2.CreateRandomDriver();
-            driver2.Tasks.LeaveVehicle(LeaveVehicleFlags.None).WaitForCompletion(6000);
-            driver2.IsPersistent = true;
-            driver2.BlockPermanentEvents = true;
+            setupPed(driver2, vehicle2);
 
             World.AddSpeedZone(spawnPoint, 100f, 15f);
 
@@ -99,6 +97,15 @@ namespace HighwaysEngland.Callouts
             vehicle.EngineHealth = engineHealth;
             vehicle.FuelTankHealth = fuelTankHealth;
             vehicle.IsEngineOn = false;
+        }
+
+        private void setupPed(Ped ped, Vehicle vehicle)
+        {
+            Persona persona = Functions.GetPersonaForPed(ped);
+            Functions.SetVehicleOwnerName(vehicle, persona.FullName);
+            ped.Tasks.LeaveVehicle(LeaveVehicleFlags.LeaveDoorOpen).WaitForCompletion(6000);
+            ped.IsPersistent = true;
+            ped.BlockPermanentEvents = true;
         }
     }
 }
