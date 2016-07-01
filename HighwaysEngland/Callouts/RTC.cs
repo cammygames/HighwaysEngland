@@ -72,11 +72,6 @@ namespace HighwaysEngland.Callouts
         {
             base.Process();
 
-            if (Game.LocalPlayer.Character.DistanceTo(vehicle1.Position) < 10f)
-            {
-                Functions.RequestBackup(spawnPoint, LSPD_First_Response.EBackupResponseType.Code3, LSPD_First_Response.EBackupUnitType.Ambulance);
-            }
-
             if (!Functions.IsCalloutRunning()) End();
         }
 
