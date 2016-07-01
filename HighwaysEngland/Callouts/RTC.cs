@@ -5,6 +5,10 @@ using Rage.Native;
 using LSPD_First_Response.Mod.API;
 using LSPD_First_Response.Mod.Callouts;
 using LSPD_First_Response.Engine.Scripting.Entities;
+using HighwaysEngland.Util;
+using System.Collections.Generic;
+using System.Windows.Forms;
+using static HighwaysEngland.Util.Common;
 
 namespace HighwaysEngland.Callouts
 {
@@ -19,6 +23,8 @@ namespace HighwaysEngland.Callouts
         private Vector3 spawnPoint;
         private int veh1;
         private int veh2;
+        private CalloutState state;
+        private Random random;
 
         private String[] vehicles = { "utillitruck2", "voodoo2", "baller2", "baller", "bison2", "bison3", "burrito", "pony2", "rapidgt2", "scrap", "minivan", "ninef2", "surfer", "taco" };
 
@@ -28,7 +34,7 @@ namespace HighwaysEngland.Callouts
             ShowCalloutAreaBlipBeforeAccepting(spawnPoint, 30f);
             AddMinimumDistanceCheck(250f, spawnPoint);
 
-            Random random = new Random();
+            random = new Random();
             veh1 = random.Next(vehicles.Length);
             veh2 = random.Next(vehicles.Length);
 
@@ -42,6 +48,8 @@ namespace HighwaysEngland.Callouts
             blip = new Blip(spawnPoint, 30f);
             blip.Color = Color.Yellow;
             blip.EnableRoute(Color.Yellow);
+
+            state = CalloutState.EnRoute;
 
             Vector3 closestVehicleNodeCoords;
             float roadheading;
@@ -72,7 +80,14 @@ namespace HighwaysEngland.Callouts
         {
             base.Process();
 
-            if (!Functions.IsCalloutRunning()) End();
+            if (state == CalloutState.EnRoute && Game.LocalPlayer.Character.Position.DistanceTo(spawnPoint) <= 15)
+            {
+                state = CalloutState.Arrived;
+                startIncedent();
+            }
+
+
+            if (!Functions.IsCalloutRunning() && state == CalloutState.Complete) End();
         }
 
         public override void End()
@@ -101,6 +116,23 @@ namespace HighwaysEngland.Callouts
             ped.Tasks.LeaveVehicle(LeaveVehicleFlags.LeaveDoorOpen).WaitForCompletion(6000);
             ped.IsPersistent = true;
             ped.BlockPermanentEvents = true;
+        }
+
+        private void startIncedent()
+        {
+            GameFiber.StartNew(delegate
+            {
+                driver1.PlayAmbientSpeech("GENERIC_FUCK_YOU", true);
+                GameFiber.Sleep(4500);
+                driver2.PlayAmbientSpeech("GENERIC_CURSE_HIGH", true);
+
+                if (random.Next(5) >= 4)
+                {
+                    driver2.Tasks.FightAgainst(driver1);
+                    driver1.Tasks.FightAgainst(driver2);
+                    Functions.RequestBackup(vehicle1.Position, LSPD_First_Response.EBackupResponseType.Code3, LSPD_First_Response.EBackupUnitType.LocalUnit);
+                }
+            });
         }
     }
 }
