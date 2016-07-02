@@ -66,7 +66,7 @@ namespace HighwaysEngland.Util
                 while (true)
                 {
                     GameFiber.Yield();
-                    if (towTruck.DistanceTo(position) <= 15)
+                    if (towTruck.DistanceTo(position) <= 15 && Functions.IsCalloutRunning())
                     {
                         towTruck.TowVehicle(vehicle, true);
                         GameFiber.Sleep(2000);
@@ -75,6 +75,11 @@ namespace HighwaysEngland.Util
                         towTruck.Dismiss();
                         towBlip.Delete();
                         break;
+                    }
+                    else if (!Functions.IsCalloutRunning())
+                    {
+                        towTruck.Dismiss();
+                        towBlip.Delete();
                     }
                 }         
                 GameFiber.Hibernate();
