@@ -45,7 +45,7 @@ namespace HighwaysEngland.Util
             if (vehicle.Doors[index].IsValid()) vehicle.Doors[index].Open(instant);
         }
 
-        public static void callTowTruck(Vehicle vehicle, Vector3 position)
+        public static bool callTowTruck(Vehicle vehicle, Vector3 position)
         {
             GameFiber.StartNew(delegate
             {
@@ -73,13 +73,14 @@ namespace HighwaysEngland.Util
                         Game.LogTrivial("Driver tasked to drive away to: " + truckSpawn);
                         truckDriver.Tasks.DriveToPosition(truckSpawn, 30f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
                         towTruck.Dismiss();
-                        vehicleBlip.Delete();
+                        towBlip.Delete();
                         break;
                     }
-                }
-
+                }         
                 GameFiber.Hibernate();
             }, "Common.callTowTruck");
+
+            return true;
         }
 
     }

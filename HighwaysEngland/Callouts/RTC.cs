@@ -118,8 +118,15 @@ namespace HighwaysEngland.Callouts
                     driver1.Tasks.FightAgainst(driver2);
                     Functions.RequestBackup(vehicle1.Position, LSPD_First_Response.EBackupResponseType.Code3, LSPD_First_Response.EBackupUnitType.LocalUnit);
                 }
-                callTowTruck(vehicle2, vehicle2.Position);
-                callTowTruck(vehicle1, vehicle1.Position);
+                bool vehicle2Towed = callTowTruck(vehicle2, vehicle2.Position);
+                bool vehicle1Towed = callTowTruck(vehicle1, vehicle1.Position);
+
+                if (vehicle1Towed && vehicle2Towed)
+                {
+                    state = CalloutState.Complete;               
+                    End();
+                    GameFiber.Hibernate();
+                }
             }, "RTC.startIncedent");
         }
     }
