@@ -122,42 +122,5 @@ namespace HighwaysEngland.Callouts
                 callTowTruck(vehicle1, vehicle1.Position);
             }, "RTC.startIncedent");
         }
-
-        private void callTowTruck(Vehicle vehicle, Vector3 position)
-        {
-            GameFiber.StartNew(delegate
-            {
-                Blip vehicleBlip;
-                Vector3 truckSpawn = World.GetNextPositionOnStreet(Game.LocalPlayer.Character.Position.Around(200f, 400f));
-                Game.LogTrivial("Towtruck & Driver Spawnpoint: ~r~" + truckSpawn);
-
-                Vehicle towTruck = new Vehicle("towtruck", truckSpawn);
-                vehicleBlip = towTruck.AttachBlip();
-                vehicleBlip.Color = Color.HotPink;
-
-                Ped truckDriver = towTruck.CreateRandomDriver();
-                Game.LogTrivial("Towtruck & Driver Created");
-
-                truckDriver.Tasks.DriveToPosition(position, 30f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
-                Game.LogTrivial("Driver tasked to drive to: " + vehicle.Position);
-
-                while (true)
-                {
-                    GameFiber.Yield();
-                    if (towTruck.DistanceTo(position) <= 15)
-                    {
-                        towTruck.TowVehicle(vehicle, true);
-                        GameFiber.Sleep(2000);
-                        Game.LogTrivial("Driver tasked to drive away to: " + truckSpawn);
-                        truckDriver.Tasks.DriveToPosition(truckSpawn, 30f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
-                        towTruck.Dismiss();
-                        vehicleBlip.Delete();
-                        break;
-                    }
-                }
-
-                GameFiber.Hibernate();
-            }, "RTC.callTowTruck");
-        }
     }
 }

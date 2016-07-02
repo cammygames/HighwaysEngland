@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing;
 using Rage;
 using Rage.Native;
 using LSPD_First_Response.Mod.API;
@@ -42,6 +43,43 @@ namespace HighwaysEngland.Util
         public static void openVehilceDoor(Vehicle vehicle, int index, bool instant)
         {
             if (vehicle.Doors[index].IsValid()) vehicle.Doors[index].Open(instant);
+        }
+
+        public static void callTowTruck(Vehicle vehicle, Vector3 position)
+        {
+            GameFiber.StartNew(delegate
+            {
+                Blip towBlip;
+                Vector3 truckSpawn = World.GetNextPositionOnStreet(Game.LocalPlayer.Character.Position.Around(200f, 400f));
+                Game.LogTrivial("Towtruck & Driver Spawnpoint: ~r~" + truckSpawn);
+
+                Vehicle towTruck = new Vehicle("towtruck", truckSpawn);
+                towBlip = towTruck.AttachBlip();
+                towBlip.Color = Color.HotPink;
+
+                Ped truckDriver = towTruck.CreateRandomDriver();
+                Game.LogTrivial("Towtruck & Driver Created");
+
+                truckDriver.Tasks.DriveToPosition(position, 30f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
+                Game.LogTrivial("Driver tasked to drive to: " + vehicle.Position);
+
+                while (true)
+                {
+                    GameFiber.Yield();
+                    if (towTruck.DistanceTo(position) <= 15)
+                    {
+                        towTruck.TowVehicle(vehicle, true);
+                        GameFiber.Sleep(2000);
+                        Game.LogTrivial("Driver tasked to drive away to: " + truckSpawn);
+                        truckDriver.Tasks.DriveToPosition(truckSpawn, 30f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
+                        towTruck.Dismiss();
+                        vehicleBlip.Delete();
+                        break;
+                    }
+                }
+
+                GameFiber.Hibernate();
+            }, "Common.callTowTruck");
         }
 
     }
