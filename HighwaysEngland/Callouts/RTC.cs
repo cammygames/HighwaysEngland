@@ -15,14 +15,11 @@ namespace HighwaysEngland.Callouts
     [CalloutInfo("RTC", CalloutProbability.Always)]
     public class RTC : Callout
     {
-        private Ped driver1;
-        private Ped driver2;
-        private Vehicle vehicle1;
-        private Vehicle vehicle2;
+        private Ped driver1, driver2;
+        private Vehicle vehicle1, vehicle2;
         private Blip blip;
         private Vector3 spawnPoint;
         private CalloutState state;
-
 
         public override bool OnBeforeCalloutDisplayed()
         {
@@ -43,13 +40,16 @@ namespace HighwaysEngland.Callouts
 
             state = CalloutState.EnRoute;
 
-            vehicle1 = new Vehicle(vehicles[rand.Next(vehicles.Length)], spawnPoint, getTrafficHeading(spawnPoint));
+            int rand1 = rand.Next(vehicles.Length);
+            vehicle1 = new Vehicle(vehicles[rand1], spawnPoint, getTrafficHeading(spawnPoint));
             setUpVeh(vehicle1, 55f, 40f, true, false); 
             vehicle1.Health = 40;
             openVehilceDoor(vehicle1, 4, false);
 
-            vehicle2 = new Vehicle(vehicles[rand.Next(vehicles.Length)], vehicle1.GetOffsetPositionFront(5f), vehicle1.Heading);
+            int rand2 = rand.Next(vehicles.Length);
+            vehicle2 = new Vehicle(vehicles[rand2], vehicle1.GetOffsetPositionFront(5f), vehicle1.Heading);
             setUpVeh(vehicle2, 200f, 100f, true, false);
+            openVehilceDoor(vehicle2, 5, false);
 
             driver1 = vehicle1.CreateRandomDriver();
             setupPed(driver1, vehicle1);
@@ -66,10 +66,11 @@ namespace HighwaysEngland.Callouts
         {
             base.Process();
 
-            if (state == CalloutState.EnRoute && Game.LocalPlayer.Character.Position.DistanceTo(spawnPoint) <= 15)
+            if (state == CalloutState.EnRoute && Game.LocalPlayer.Character.Position.DistanceTo(spawnPoint) <= 15 && Functions.IsCalloutRunning())
             {
                 state = CalloutState.Arrived;
                 startIncedent();
+                if (blip.Exists()) { blip.Delete(); }
             }
 
 
@@ -117,7 +118,42 @@ namespace HighwaysEngland.Callouts
                     driver1.Tasks.FightAgainst(driver2);
                     Functions.RequestBackup(vehicle1.Position, LSPD_First_Response.EBackupResponseType.Code3, LSPD_First_Response.EBackupUnitType.LocalUnit);
                 }
-            });
+                callTowTruck(vehicle2, vehicle2.Position);
+                callTowTruck(vehicle1, vehicle1.Position);
+            }, "RTC.startIncedent");
+        }
+
+        private void callTowTruck(Vehicle vehicle, Vector3 position)
+        {
+            GameFiber.StartNew(delegate
+            {
+                
+                Vector3 truckSpawn = World.GetNextPositionOnStreet(Game.LocalPlayer.Character.Position.Around(400f, 900f));
+                Game.LogTrivial("Towtruck & Driver Spawnpoint: ~r~" + truckSpawn);
+
+                Vehicle towTruck = new Vehicle("towtruck", truckSpawn, 90f);
+                towTruck.AttachBlip();
+                Ped truckDriver = towTruck.CreateRandomDriver();
+                Game.LogTrivial("Towtruck & Driver Created");
+
+                truckDriver.Tasks.DriveToPosition(position, 30f, VehicleDrivingFlags.Normal).WaitForCompletion(25000);
+                Game.LogTrivial("Driver tasked to drive to: " + vehicle.Position);
+
+                while (true)
+                {
+                    GameFiber.Yield();
+                    if (towTruck.DistanceTo(position) <= 15)
+                    {
+                        towTruck.TowVehicle(vehicle, true);
+                        Game.LogTrivial("Driver tasked to drive away to: " + truckSpawn);
+                        truckDriver.Tasks.DriveToPosition(truckSpawn, 30f, VehicleDrivingFlags.Normal).WaitForCompletion(25000);
+                        towTruck.Dismiss();
+                        break;
+                    }
+                }
+
+                GameFiber.Hibernate();
+            }, "RTC.callTowTruck");
         }
     }
 }
