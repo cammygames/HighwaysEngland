@@ -127,16 +127,18 @@ namespace HighwaysEngland.Callouts
         {
             GameFiber.StartNew(delegate
             {
-                
-                Vector3 truckSpawn = World.GetNextPositionOnStreet(Game.LocalPlayer.Character.Position.Around(400f, 900f));
+                Blip vehicleBlip;
+                Vector3 truckSpawn = World.GetNextPositionOnStreet(Game.LocalPlayer.Character.Position.Around(200f, 400f));
                 Game.LogTrivial("Towtruck & Driver Spawnpoint: ~r~" + truckSpawn);
 
-                Vehicle towTruck = new Vehicle("towtruck", truckSpawn, 90f);
-                towTruck.AttachBlip();
+                Vehicle towTruck = new Vehicle("towtruck", truckSpawn);
+                vehicleBlip = towTruck.AttachBlip();
+                vehicleBlip.Color = Color.HotPink;
+
                 Ped truckDriver = towTruck.CreateRandomDriver();
                 Game.LogTrivial("Towtruck & Driver Created");
 
-                truckDriver.Tasks.DriveToPosition(position, 30f, VehicleDrivingFlags.Normal).WaitForCompletion(25000);
+                truckDriver.Tasks.DriveToPosition(position, 30f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
                 Game.LogTrivial("Driver tasked to drive to: " + vehicle.Position);
 
                 while (true)
@@ -145,9 +147,11 @@ namespace HighwaysEngland.Callouts
                     if (towTruck.DistanceTo(position) <= 15)
                     {
                         towTruck.TowVehicle(vehicle, true);
+                        GameFiber.Sleep(2000);
                         Game.LogTrivial("Driver tasked to drive away to: " + truckSpawn);
-                        truckDriver.Tasks.DriveToPosition(truckSpawn, 30f, VehicleDrivingFlags.Normal).WaitForCompletion(25000);
+                        truckDriver.Tasks.DriveToPosition(truckSpawn, 30f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
                         towTruck.Dismiss();
+                        vehicleBlip.Delete();
                         break;
                     }
                 }
