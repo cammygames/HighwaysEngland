@@ -17,7 +17,7 @@ namespace HighwaysEngland.Callouts
     {
         private Ped driver1, driver2;
         private Vehicle vehicle1, vehicle2;
-        private Blip blip;
+        private Blip blip, towBlip1, towBlip2;
         private Vector3 spawnPoint;
         private CalloutState state;
 
@@ -85,6 +85,8 @@ namespace HighwaysEngland.Callouts
             if (vehicle1.Exists()) { vehicle1.Dismiss(); }
             if (vehicle2.Exists()) { vehicle1.Dismiss(); }
             if (blip.Exists()) { blip.Delete(); }
+            if (towBlip1.Exists()) { towBlip1.Delete(); }
+            if (towBlip2.Exists()) { towBlip2.Delete(); }
         }
 
         private void setUpVeh(Vehicle vehicle, float engineHealth, float fuelTankHealth, bool isPersistant, bool isDirveable)
@@ -108,25 +110,27 @@ namespace HighwaysEngland.Callouts
         {
             GameFiber.StartNew(delegate
             {
-                driver1.PlayAmbientSpeech("GENERIC_FUCK_YOU", true);
+                driver1.PlayAmbientSpeech("GENERIC_FUCK_YOU");
                 GameFiber.Sleep(4500);
-                driver2.PlayAmbientSpeech("GENERIC_CURSE_HIGH", true);
+                driver2.PlayAmbientSpeech("Generic_Shocked_High");
+                int chance = rand.Next(5);
 
-                if (rand.Next(5) >= 4)
+                if (chance >= 4)
                 {
                     driver2.Tasks.FightAgainst(driver1);
                     driver1.Tasks.FightAgainst(driver2);
                     Functions.RequestBackup(vehicle1.Position, LSPD_First_Response.EBackupResponseType.Code3, LSPD_First_Response.EBackupUnitType.LocalUnit);
                 }
-                bool vehicle2Towed = callTowTruck(vehicle2, vehicle2.Position);
-                bool vehicle1Towed = callTowTruck(vehicle1, vehicle1.Position);
-
-                if (vehicle1Towed && vehicle2Towed)
+                else if (chance >= 2 && chance <= 3)
                 {
-                    state = CalloutState.Complete;               
-                    End();
-                    GameFiber.Hibernate();
+                    vehicle1.EngineHealth = 0f;
+                    vehicle1.IsOnFire = true;
+                    Game.DisplaySubtitle("~b~Officer: Dispatch, requesting Fire truck code 3 my location.");
+                    Functions.RequestBackup(vehicle1.Position, LSPD_First_Response.EBackupResponseType.Code3, LSPD_First_Response.EBackupUnitType.Firetruck);
                 }
+
+                towBlip1 = callTowTruck(vehicle2, vehicle2.Position);
+                towBlip2 = callTowTruck(vehicle1, vehicle1.Position);
             }, "RTC.startIncedent");
         }
     }
