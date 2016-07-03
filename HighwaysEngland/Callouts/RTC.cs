@@ -96,26 +96,30 @@ namespace HighwaysEngland.Callouts
 
         private void setUpVeh(Vehicle vehicle, float engineHealth, float fuelTankHealth, bool isPersistant, bool isDirveable)
         {
+            Game.LogTrivial("Called setupVehicle.");
             vehicle.IsPersistent = isPersistant;
             vehicle.IsDriveable = isDirveable;
             vehicle.EngineHealth = engineHealth;
             vehicle.FuelTankHealth = fuelTankHealth;
             vehicle.IsEngineOn = false;
+            Game.LogTrivial("Finished setupVehicle.");
         }
 
         private void setupPed(Ped ped, Vehicle vehicle)
         {
+            Game.LogTrivial("Called setupPed.");
             linkPedToVehicle(ped, vehicle);
             ped.IsPersistent = true;
             ped.BlockPermanentEvents = true;
             ped.Tasks.LeaveVehicle(LeaveVehicleFlags.LeaveDoorOpen).WaitForCompletion(6000);
+            Game.LogTrivial("Finished setupPed.");
         }
 
         private void startIncedent()
         {
+            Game.LogTrivial("Called startIncedent Starting new Fiber.");
             GameFiber.StartNew(delegate
             {
-                int chance = rand.Next(5);
                 bool talkedToD1 = false, talkedToD2 = false, recoverdVehicle1 = false, recoverdVehicle2 = false;
                 List<String>.Enumerator currentConv1, currentConv2;
 
@@ -128,6 +132,7 @@ namespace HighwaysEngland.Callouts
                         Game.DisplaySubtitle("Hold ~b~T ~w~to talk to the driver.");
                         while (Game.IsKeyDownRightNow(Keys.T))
                         {
+                            Game.LogTrivial("RTC.startIncedent Fiber: Player is talking to NPC.");
                             GameFiber.Yield();
                             if (currentConv1.MoveNext())
                             {
@@ -138,8 +143,8 @@ namespace HighwaysEngland.Callouts
                             {
                                 Game.DisplaySubtitle("~b~Officer: ~w~Thanks for your cooperation, Ill get a tow truck down here to take your vehicle.");
                                 talkedToD1 = true;
+                                Game.LogTrivial("RTC.startIncedent Fiber: Player finished conversation, calling tow truck.");
                                 towBlip1 = callTowTruck(vehicle1, vehicle1.Position, true);
-                                player.Tasks.PlayAnimation("random@arrests", "generic_radio_chatter", 5f, AnimationFlags.UpperBodyOnly);
                             }
                         }
                     }
@@ -149,6 +154,7 @@ namespace HighwaysEngland.Callouts
                         Game.DisplaySubtitle("Hold ~b~T ~w~to talk to the driver.");
                         while (Game.IsKeyDownRightNow(Keys.T))
                         {
+                            Game.LogTrivial("RTC.startIncedent Fiber: Player is talking to NPC.");
                             GameFiber.Yield();
                             if (currentConv2.MoveNext())
                             {
@@ -159,6 +165,7 @@ namespace HighwaysEngland.Callouts
                             {
                                 Game.DisplaySubtitle("~b~Officer: ~w~Thanks for your cooperation, Ill get a tow truck down here to take your vehicle.");
                                 talkedToD2 = true;
+                                Game.LogTrivial("RTC.startIncedent Fiber: Player finished conversation, calling tow truck.");
                                 towBlip2 = callTowTruck(vehicle2, vehicle2.Position, true);
                             }
                         }
@@ -170,6 +177,7 @@ namespace HighwaysEngland.Callouts
                     }
                     else if (talkedToD1 && recoverdVehicle1 && talkedToD2 && recoverdVehicle2)
                     {
+                        Game.LogTrivial("RTC.startIncedent Fiber: Both vehicles and drivers sorted, finish & cleanup.");
                         Game.DisplaySubtitle("~b~Officer: ~w~Thank you both for your cooperation, you can be on your way now.");
                         GameFiber.Sleep(5000);
                         End();

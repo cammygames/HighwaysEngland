@@ -38,6 +38,7 @@ namespace HighwaysEngland.Util
         {
             Persona persona = Functions.GetPersonaForPed(ped);
             Functions.SetVehicleOwnerName(vehicle, persona.FullName);
+            Game.LogTrivial("linkPedToVehicle finished.");
         }
 
         public static void openVehilceDoor(Vehicle vehicle, int index, bool instant)
@@ -74,7 +75,7 @@ namespace HighwaysEngland.Util
                         if (vehicle.IsValid())
                         {
                             towTruck.TowVehicle(vehicle, hookFront);
-                            Game.LogExtremelyVerbose("Towing Vehicle!");
+                            Game.LogTrivial("Towing Vehicle!");
                         } else
                         {
                             Game.LogExtremelyVerbose("Vehicle Invalid!");
