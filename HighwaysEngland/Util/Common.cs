@@ -45,7 +45,7 @@ namespace HighwaysEngland.Util
             if (vehicle.Doors[index].IsValid()) vehicle.Doors[index].Open(instant);
         }
 
-        public static Blip callTowTruck(Vehicle vehicle, Vector3 position)
+        public static Blip callTowTruck(Vehicle vehicle, Vector3 position, bool hookFront)
         {
             Blip towBlip;
             Vector3 truckSpawn = World.GetNextPositionOnStreet(Game.LocalPlayer.Character.Position.Around(200f, 400f));
@@ -56,9 +56,11 @@ namespace HighwaysEngland.Util
             towBlip.Color = Color.HotPink;
 
             Ped truckDriver = towTruck.CreateRandomDriver();
+            truckDriver.BlockPermanentEvents = true;
+
             Game.LogTrivial("Towtruck & Driver Created");
 
-            truckDriver.Tasks.DriveToPosition(position, 30f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
+            truckDriver.Tasks.DriveToPosition(position.Around(5f), 30f, VehicleDrivingFlags.StopAtDestination, 15f).WaitForCompletion(25000);
             Game.LogTrivial("Driver tasked to drive to: " + vehicle.Position);
 
             GameFiber.StartNew(delegate
@@ -69,9 +71,18 @@ namespace HighwaysEngland.Util
                     if (towTruck.DistanceTo(position) <= 15 && Functions.IsCalloutRunning())
                     {
                         GameFiber.Sleep(5000);
-                        towTruck.TowVehicle(vehicle, true);
+                        if (vehicle.IsValid())
+                        {
+                            towTruck.TowVehicle(vehicle, hookFront);
+                            Game.LogExtremelyVerbose("Towing Vehicle!");
+                        } else
+                        {
+                            Game.LogExtremelyVerbose("Vehicle Invalid!");
+                            Game.DisplaySubtitle("Vehicle Invalid?");
+                        }
+
                         Game.LogTrivial("Driver tasked to drive away to: " + truckSpawn);
-                        truckDriver.Tasks.DriveToPosition(truckSpawn, 20f, VehicleDrivingFlags.Normal, 15f).WaitForCompletion(25000);
+                        truckDriver.Tasks.DriveToPosition(truckSpawn.Around(100f), 30f, VehicleDrivingFlags.StopAtDestination, 15f).WaitForCompletion(1000);
                         if (towTruck.Exists()) towTruck.Dismiss();
                         if (towBlip.Exists()) towBlip.Delete();
                         break;

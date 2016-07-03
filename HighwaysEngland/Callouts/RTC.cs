@@ -20,6 +20,7 @@ namespace HighwaysEngland.Callouts
         private Blip blip, towBlip1, towBlip2;
         private Vector3 spawnPoint;
         private CalloutState state;
+        private Ped player;
 
         public override bool OnBeforeCalloutDisplayed()
         {
@@ -29,6 +30,8 @@ namespace HighwaysEngland.Callouts
 
             CalloutMessage = "~o~Road Traffic Collision";
             CalloutPosition = spawnPoint;
+            Functions.PlayScannerAudioUsingPosition("CITIZENS_REPORT_03 CIVILIAN_NEEDING_ASSISTANCE IN_OR_ON_POSITION", this.spawnPoint);
+
             return base.OnBeforeCalloutDisplayed();
         }
 
@@ -39,6 +42,7 @@ namespace HighwaysEngland.Callouts
             blip.EnableRoute(Color.Yellow);
 
             state = CalloutState.EnRoute;
+            player = Game.LocalPlayer.Character;
 
             int rand1 = rand.Next(vehicles.Length);
             vehicle1 = new Vehicle(vehicles[rand1], spawnPoint, getTrafficHeading(spawnPoint));
@@ -66,7 +70,7 @@ namespace HighwaysEngland.Callouts
         {
             base.Process();
 
-            if (state == CalloutState.EnRoute && Game.LocalPlayer.Character.Position.DistanceTo(spawnPoint) <= 15 && Functions.IsCalloutRunning())
+            if (state == CalloutState.EnRoute && player.Position.DistanceTo(spawnPoint) <= 15 && Functions.IsCalloutRunning())
             {
                 state = CalloutState.Arrived;
                 startIncedent();
@@ -80,10 +84,11 @@ namespace HighwaysEngland.Callouts
         public override void End()
         {
             base.End();
+
             if (driver1.Exists()) { driver1.Dismiss(); }
             if (driver2.Exists()) { driver2.Dismiss(); }
-            if (vehicle1.Exists()) { vehicle1.Dismiss(); }
-            if (vehicle2.Exists()) { vehicle1.Dismiss(); }
+            if (vehicle1.Exists()) { vehicle1.Delete(); }
+            if (vehicle2.Exists()) { vehicle2.Delete(); }
             if (blip.Exists()) { blip.Delete(); }
             if (towBlip1.Exists()) { towBlip1.Delete(); }
             if (towBlip2.Exists()) { towBlip2.Delete(); }
@@ -101,36 +106,77 @@ namespace HighwaysEngland.Callouts
         private void setupPed(Ped ped, Vehicle vehicle)
         {
             linkPedToVehicle(ped, vehicle);
-            ped.Tasks.LeaveVehicle(LeaveVehicleFlags.LeaveDoorOpen).WaitForCompletion(6000);
             ped.IsPersistent = true;
             ped.BlockPermanentEvents = true;
+            ped.Tasks.LeaveVehicle(LeaveVehicleFlags.LeaveDoorOpen).WaitForCompletion(6000);
         }
 
         private void startIncedent()
         {
             GameFiber.StartNew(delegate
             {
-                driver1.PlayAmbientSpeech("GENERIC_FUCK_YOU");
-                GameFiber.Sleep(4500);
-                driver2.PlayAmbientSpeech("Generic_Shocked_High");
                 int chance = rand.Next(5);
+                bool talkedToD1 = false, talkedToD2 = false, recoverdVehicle1 = false, recoverdVehicle2 = false;
+                List<String>.Enumerator currentConv1, currentConv2;
 
-                if (chance >= 4)
+                while (true && Functions.IsCalloutRunning())
                 {
-                    driver2.Tasks.FightAgainst(driver1);
-                    driver1.Tasks.FightAgainst(driver2);
-                    Functions.RequestBackup(vehicle1.Position, LSPD_First_Response.EBackupResponseType.Code3, LSPD_First_Response.EBackupUnitType.LocalUnit);
-                }
-                else if (chance >= 2 && chance <= 3)
-                {
-                    vehicle1.EngineHealth = 0f;
-                    vehicle1.IsOnFire = true;
-                    Game.DisplaySubtitle("~b~Officer: Dispatch, requesting Fire truck code 3 my location.");
-                    Functions.RequestBackup(vehicle1.Position, LSPD_First_Response.EBackupResponseType.Code3, LSPD_First_Response.EBackupUnitType.Firetruck);
+                    GameFiber.Yield();
+                    if (player.Position.DistanceTo(driver1) <= 4 && !talkedToD1)
+                    {
+                        currentConv1 = Conversation.conversations["RTC_1_1"].GetEnumerator();
+                        Game.DisplaySubtitle("Hold ~b~T ~w~to talk to the driver.");
+                        while (Game.IsKeyDownRightNow(Keys.T))
+                        {
+                            GameFiber.Yield();
+                            if (currentConv1.MoveNext())
+                            {
+                                Game.DisplaySubtitle(currentConv1.Current, 2000);
+                                GameFiber.Sleep(3000);
+                            } 
+                            else
+                            {
+                                Game.DisplaySubtitle("~b~Officer: ~w~Thanks for your cooperation, Ill get a tow truck down here to take your vehicle.");
+                                talkedToD1 = true;
+                                towBlip1 = callTowTruck(vehicle1, vehicle1.Position, true);
+                                player.Tasks.PlayAnimation("random@arrests", "generic_radio_chatter", 5f, AnimationFlags.UpperBodyOnly);
+                            }
+                        }
+                    }
+                    else if (player.Position.DistanceTo(driver2) <= 4 && !talkedToD2)
+                    {
+                        currentConv2 = Conversation.conversations["RTC_1_2"].GetEnumerator();
+                        Game.DisplaySubtitle("Hold ~b~T ~w~to talk to the driver.");
+                        while (Game.IsKeyDownRightNow(Keys.T))
+                        {
+                            GameFiber.Yield();
+                            if (currentConv2.MoveNext())
+                            {
+                                Game.DisplaySubtitle(currentConv2.Current, 2000);
+                                GameFiber.Sleep(3000);
+                            }
+                            else
+                            {
+                                Game.DisplaySubtitle("~b~Officer: ~w~Thanks for your cooperation, Ill get a tow truck down here to take your vehicle.");
+                                talkedToD2 = true;
+                                towBlip2 = callTowTruck(vehicle2, vehicle2.Position, true);
+                            }
+                        }
+                    }
+                    else if (talkedToD1 & talkedToD2)
+                    {
+                        if (vehicle1.FindTowTruck() != null) recoverdVehicle1 = true;
+                        if (vehicle2.FindTowTruck() != null) recoverdVehicle2 = true;
+                    }
+                    else if (talkedToD1 && recoverdVehicle1 && talkedToD2 && recoverdVehicle2)
+                    {
+                        Game.DisplaySubtitle("~b~Officer: ~w~Thank you both for your cooperation, you can be on your way now.");
+                        GameFiber.Sleep(5000);
+                        End();
+                        GameFiber.Hibernate();
+                    }
                 }
 
-                towBlip1 = callTowTruck(vehicle2, vehicle2.Position);
-                towBlip2 = callTowTruck(vehicle1, vehicle1.Position);
             }, "RTC.startIncedent");
         }
     }
