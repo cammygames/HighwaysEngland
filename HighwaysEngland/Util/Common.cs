@@ -49,10 +49,10 @@ namespace HighwaysEngland.Util
         public static Blip callTowTruck(Vehicle vehicle, Vector3 position, bool hookFront)
         {
             Blip towBlip;
-            Vector3 truckSpawn = World.GetNextPositionOnStreet(Game.LocalPlayer.Character.Position.Around(200f, 400f));
-            Game.LogTrivial("Towtruck & Driver Spawnpoint: ~r~" + truckSpawn);
+            Vector3 truckSpawn = World.GetNextPositionOnStreet(Game.LocalPlayer.Character.Position.AroundBetween(200f, 300f));
+            Game.LogTrivial("Towtruck & Driver Spawnpoint: " + truckSpawn);
 
-            Vehicle towTruck = new Vehicle("towtruck", truckSpawn);
+            Vehicle towTruck = new Vehicle("towtruck", truckSpawn, getTrafficHeading(truckSpawn));
             towBlip = towTruck.AttachBlip();
             towBlip.Color = Color.HotPink;
 
@@ -61,7 +61,7 @@ namespace HighwaysEngland.Util
 
             Game.LogTrivial("Towtruck & Driver Created");
 
-            truckDriver.Tasks.DriveToPosition(position.Around(5f), 30f, VehicleDrivingFlags.StopAtDestination, 15f).WaitForCompletion(25000);
+            truckDriver.Tasks.DriveToPosition(position, 30f, VehicleDrivingFlags.StopAtDestination, 5f).WaitForCompletion(25000);
             Game.LogTrivial("Driver tasked to drive to: " + vehicle.Position);
 
             GameFiber.StartNew(delegate
@@ -69,10 +69,10 @@ namespace HighwaysEngland.Util
                 while (true)
                 {
                     GameFiber.Yield();
-                    if (towTruck.DistanceTo(position) <= 15 && Functions.IsCalloutRunning())
+                    if (towTruck.DistanceTo(position) <= 15)
                     {
                         GameFiber.Sleep(5000);
-                        if (vehicle.IsValid())
+                        if (vehicle.Exists())
                         {
                             towTruck.TowVehicle(vehicle, hookFront);
                             Game.LogTrivial("Towing Vehicle!");

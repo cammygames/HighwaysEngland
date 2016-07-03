@@ -4,7 +4,6 @@ using Rage;
 using Rage.Native;
 using LSPD_First_Response.Mod.API;
 using LSPD_First_Response.Mod.Callouts;
-using LSPD_First_Response.Engine.Scripting.Entities;
 using HighwaysEngland.Util;
 using System.Collections.Generic;
 using System.Windows.Forms;
@@ -13,7 +12,7 @@ using static HighwaysEngland.Util.Common;
 namespace HighwaysEngland.Callouts
 {
     [CalloutInfo("RTC", CalloutProbability.Always)]
-    public class RTC : Callout
+    public class RTC2 : Callout
     {
         private Ped driver1, driver2;
         private Vehicle vehicle1, vehicle2;
@@ -123,17 +122,19 @@ namespace HighwaysEngland.Callouts
                 bool talkedToD1 = false, talkedToD2 = false, recoverdVehicle1 = false, recoverdVehicle2 = false;
                 List<String>.Enumerator currentConv1, currentConv2;
 
-                while (true && Functions.IsCalloutRunning())
+                while (true && Functions.IsCalloutRunning() && driver1.Exists() && driver2.Exists())
                 {
                     GameFiber.Yield();
                     if (player.Position.DistanceTo(driver1) <= 4 && !talkedToD1)
                     {
                         currentConv1 = Conversation.conversations["RTC_1_1"].GetEnumerator();
                         Game.DisplaySubtitle("Hold ~b~T ~w~to talk to the driver.");
+                        NativeFunction.Natives.TASK_CHAT_TO_PED(driver1, player, 16, 0f, 0f, 0f, 0f, 0f);
                         while (Game.IsKeyDownRightNow(Keys.T))
                         {
-                            Game.LogTrivial("RTC.startIncedent Fiber: Player is talking to NPC.");
                             GameFiber.Yield();
+
+                            Game.LogTrivial("RTC.startIncedent Fiber: Player is talking to NPC.");
                             if (currentConv1.MoveNext())
                             {
                                 Game.DisplaySubtitle(currentConv1.Current, 2000);
@@ -144,7 +145,7 @@ namespace HighwaysEngland.Callouts
                                 Game.DisplaySubtitle("~b~Officer: ~w~Thanks for your cooperation, Ill get a tow truck down here to take your vehicle.");
                                 talkedToD1 = true;
                                 Game.LogTrivial("RTC.startIncedent Fiber: Player finished conversation, calling tow truck.");
-                                towBlip1 = callTowTruck(vehicle1, vehicle1.Position, true);
+                                towBlip1 = callTowTruck(vehicle1, vehicle1.Position.Around(2f), true);
                             }
                         }
                     }
@@ -152,10 +153,12 @@ namespace HighwaysEngland.Callouts
                     {
                         currentConv2 = Conversation.conversations["RTC_1_2"].GetEnumerator();
                         Game.DisplaySubtitle("Hold ~b~T ~w~to talk to the driver.");
+                        NativeFunction.Natives.TASK_CHAT_TO_PED(driver2, player, 16, 0f, 0f, 0f, 0f, 0f);
                         while (Game.IsKeyDownRightNow(Keys.T))
                         {
-                            Game.LogTrivial("RTC.startIncedent Fiber: Player is talking to NPC.");
                             GameFiber.Yield();
+                            
+                            Game.LogTrivial("RTC.startIncedent Fiber: Player is talking to NPC.");     
                             if (currentConv2.MoveNext())
                             {
                                 Game.DisplaySubtitle(currentConv2.Current, 2000);
@@ -166,14 +169,22 @@ namespace HighwaysEngland.Callouts
                                 Game.DisplaySubtitle("~b~Officer: ~w~Thanks for your cooperation, Ill get a tow truck down here to take your vehicle.");
                                 talkedToD2 = true;
                                 Game.LogTrivial("RTC.startIncedent Fiber: Player finished conversation, calling tow truck.");
-                                towBlip2 = callTowTruck(vehicle2, vehicle2.Position, true);
+                                towBlip2 = callTowTruck(vehicle2, vehicle2.Position.Around(2f), true);
                             }
                         }
                     }
                     else if (talkedToD1 & talkedToD2 && vehicle1.Exists() && vehicle2.Exists())
                     {
-                        if (vehicle1.FindTowTruck() != null) recoverdVehicle1 = true;
-                        if (vehicle2.FindTowTruck() != null) recoverdVehicle2 = true;
+                        if (vehicle1.FindTowTruck() != null)
+                        {
+                            Game.DisplayHelp("Vehicle Recovered!");
+                            recoverdVehicle1 = true;
+                        }
+                        if (vehicle2.FindTowTruck() != null)
+                        {
+                            Game.DisplayHelp("Vehicle Recovered!");
+                            recoverdVehicle2 = true;
+                        }
                     }
                     else if (talkedToD1 && recoverdVehicle1 && talkedToD2 && recoverdVehicle2)
                     {
