@@ -163,7 +163,7 @@ namespace HighwaysEngland.Callouts
                             }
                         }
                     }
-                    else if (talkedToD1 & talkedToD2)
+                    else if (talkedToD1 & talkedToD2 && vehicle1.Exists() && vehicle2.Exists())
                     {
                         if (vehicle1.FindTowTruck() != null) recoverdVehicle1 = true;
                         if (vehicle2.FindTowTruck() != null) recoverdVehicle2 = true;
